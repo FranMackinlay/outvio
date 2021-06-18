@@ -2,18 +2,34 @@ import express from 'express';
 import expressAsyncHandler from 'express-async-handler';
 import Book from '../models/BooksSchema.js';
 import Author from '../models/AuthorSchema.js';
+import path from 'path';
+import dotenv from 'dotenv';
+import { mongoRateLimiter } from '../middlewares/mongoRateLimiter.js';
 
+const __dirname = path.resolve();
+
+dotenv.config({ path: __dirname + '/.env' });
+
+const {
+  GET_BOOKS_MAX_REQUEST_COUNT,
+  GET_BOOK_BY_ID_MAX_REQUEST_COUNT,
+  POST_BOOK_MAX_REQUEST_COUNT,
+  UPDATE_BOOK_MAX_REQUEST_COUNT,
+  DELETE_BOOK_MAX_REQUEST_COUNT,
+  HOUR_LIMIT,
+  MONGODB_URL
+} = process.env;
 
 const router = express.Router();
 
 /* GET Books */
-router.get('/', expressAsyncHandler(async (req, res) => {
+router.get('/', mongoRateLimiter(MONGODB_URL, HOUR_LIMIT, GET_BOOKS_MAX_REQUEST_COUNT), expressAsyncHandler(async (req, res) => {
   const books = await Book.find()
   res.send({ books });
 }));
 
 /* GET book by _id */
-router.get('/:bookId', expressAsyncHandler(async (req, res) => {
+router.get('/:bookId', mongoRateLimiter(MONGODB_URL, HOUR_LIMIT, GET_BOOK_BY_ID_MAX_REQUEST_COUNT), expressAsyncHandler(async (req, res) => {
   const _id = req.params.bookId;
 
   const book = await Book.findById(_id).populate('author', Author);
@@ -22,7 +38,7 @@ router.get('/:bookId', expressAsyncHandler(async (req, res) => {
 }));
 
 /* Post new book */
-router.post('/', expressAsyncHandler(async (req, res) => {
+router.post('/', mongoRateLimiter(MONGODB_URL, HOUR_LIMIT, POST_BOOK_MAX_REQUEST_COUNT), expressAsyncHandler(async (req, res) => {
 
   const { book } = req.body;
 
@@ -37,7 +53,7 @@ router.post('/', expressAsyncHandler(async (req, res) => {
 }));
 
 /* PUT update book by _id */
-router.put('/:bookId', expressAsyncHandler(async (req, res) => {
+router.put('/:bookId', mongoRateLimiter(MONGODB_URL, HOUR_LIMIT, UPDATE_BOOK_MAX_REQUEST_COUNT), expressAsyncHandler(async (req, res) => {
   const { bookId } = req.params;
   const { book } = req.body;
 
@@ -48,7 +64,7 @@ router.put('/:bookId', expressAsyncHandler(async (req, res) => {
 }));
 
 /* DELETE book by _id. */
-router.delete('/:bookId', expressAsyncHandler(async (req, res) => {
+router.delete('/:bookId', mongoRateLimiter(MONGODB_URL, HOUR_LIMIT, DELETE_BOOK_MAX_REQUEST_COUNT), expressAsyncHandler(async (req, res) => {
   const { bookId } = req.params;
 
   await Book.findOneAndDelete({ _id: bookId });
